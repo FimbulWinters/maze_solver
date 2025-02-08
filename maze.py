@@ -13,11 +13,14 @@ class Maze:
         self._cell_size_y = cell_size_y
         self._win = win
         self._cells = []
+        self._exit = None
+        self._entrance = None
         self._create_cells()
         self._break_entrance_exit()
         if seed:
             random.seed(seed)
         self._break_walls_r(0, 0)
+        self._reset_cells_visited()
 
     def _create_cells(self):
         for i in range(self._num_cols):
@@ -42,13 +45,15 @@ class Maze:
 
     def _animate(self):
         self._win.redraw()
-        time.sleep(0.01)
+        time.sleep(0.05)
 
     def _break_entrance_exit(self):
         self._cells[0][0].has_top_wall = False
         self._draw_cell(0, 0)
+        self._entrance = self._cells[0][0]
         self._cells[self._num_cols-1][self._num_rows-1].has_bottom_wall = False
         self._draw_cell(self._num_cols-1, self._num_rows-1)
+        self._exit = self._cells[self._num_cols-1][self._num_rows-1]
 
     def _break_walls_r(self, i, j):
         self._cells[i][j].visited = True
@@ -95,3 +100,46 @@ class Maze:
                 self._cells[i][j].has_bottom_wall = False
             #  moving swiftly on
             self._break_walls_r(next_cell[0], next_cell[1])
+
+    def _reset_cells_visited(self):
+        for col in self._cells:
+            for cell in col:
+                cell.visited = False
+
+    def solve(self):
+        return self._solve_r(0, 0)
+
+    def _solve_r(self, i, j):
+        self._animate()
+        current_cell = self._cells[i][j]
+        current_cell.visited = True
+
+        # check if its exit:
+        if current_cell == self._exit:
+            return True
+
+        # check current cells walls for possible directions:
+        possible_directions = []
+        # left
+        if not current_cell.has_left_wall:
+            possible_directions.append((i-1, j))
+        # right
+        if not current_cell.has_right_wall:
+            possible_directions.append((i+1, j))
+        # up
+        if not current_cell.has_top_wall and current_cell != self._entrance:
+            possible_directions.append((i, j-1))
+        if not current_cell.has_bottom_wall and current_cell != self._exit:
+            possible_directions.append((i, j+1))
+
+        for direction in possible_directions:
+            next_cell = self._cells[direction[0]][direction[1]]
+            if not next_cell.visited:
+                current_cell.draw_move(next_cell)
+                success = self._solve_r(direction[0], direction[1])
+                if success:
+                    return True
+                else:
+                    current_cell.draw_move(next_cell, True)
+
+        return False
